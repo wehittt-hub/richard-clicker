@@ -1,41 +1,66 @@
 const fs = require('fs');
 const path = require('path');
 
-// Path to scores.json
+// Use __dirname to point to the same folder as this file
 const filePath = path.join(__dirname, 'scores.json');
 
 exports.handler = async (event, context) => {
   let scores = [];
 
-  // Read existing scores
   try {
-    scores = JSON.parse(fs.readFileSync(filePath));
+    // Read existing scores (if the file exists)
+    if (fs.existsSync(filePath)) {
+      const data = fs.readFileSync(filePath, 'utf8');
+      scores = JSON.parse(data);
+    } else {
+      // Create file if it doesn’t exist
+      fs.writeFileSync(filePath, JSON.stringify([]));
+      scores = [];
+    }
   } catch (err) {
-    scores = [];
+    console.error('Error reading scores.json:', err);
+    return { statusCode: 500, body: 'Error reading scores' };
   }
 
-  if (event.httpMethod === "POST") {
-    const { name, score } = JSON.parse(event.body);
-    if (!name || typeof score !== "number") {
-      return { statusCode: 400, body: "Invalid data" };
+  // Handle POST request → submit new score
+  if (event.httpMethod === 'POST') {
+    let body;
+    try {
+      body = JSON.parse(event.body);
+    } catch (err) {
+      return { statusCode: 400, body: 'Invalid JSON' };
+    }
+
+    const { name, score } = body;
+
+    if (!name || typeof score !== 'number') {
+      return { statusCode: 400, body: 'Invalid data: name and numeric score required' };
     }
 
     // Add new score
     scores.push({ name, score });
 
-    // Sort descending and keep top 10
+    // Sort descending by score and keep top 10
     scores.sort((a, b) => b.score - a.score);
     scores = scores.slice(0, 10);
 
-    // Save back to file
-    fs.writeFileSync(filePath, JSON.stringify(scores, null, 2));
+    try {
+      fs.writeFileSync(filePath, JSON.stringify(scores, null, 2));
+    } catch (err) {
+      console.error('Error writing scores.json:', err);
+      return { statusCode: 500, body: 'Error saving score' };
+    }
 
-    return { statusCode: 200, body: JSON.stringify(scores) };
+    return {
+      statusCode: 200,
+      body: JSON.stringify(scores)
+    };
   }
 
-  // GET request returns current leaderboard
+  // GET request → return top 10 scores
   return {
     statusCode: 200,
     body: JSON.stringify(scores)
   };
 };
+
