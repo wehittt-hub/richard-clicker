@@ -1,0 +1,404 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>Richard Clicker</title>
+
+<style>
+body{
+  margin:0;
+  overflow:hidden;
+  background:black;
+  color:white;
+  font-family:Arial, sans-serif;
+  text-align:center;
+  user-select:none;
+  transition:background 0.1s;
+}
+
+h1{
+  margin-top:10px;
+}
+
+#face{
+  width:550px; /* bigger */
+  cursor:pointer;
+  user-drag:none;
+  -webkit-user-drag:none;
+  transition:transform 0.1s;
+}
+
+@keyframes shake {
+  0% { transform:translateX(0); }
+  25% { transform:translateX(-10px); }
+  50% { transform:translateX(10px); }
+  75% { transform:translateX(-10px); }
+  100% { transform:translateX(0); }
+}
+
+.shake{
+  animation:shake 0.3s;
+}
+
+#coinDisplay{
+  font-size:35px;
+  margin-top:15px;
+}
+
+/* Yellow shop */
+#shop{
+  position:fixed;
+  right:8%;
+  top:50%;
+  transform:translateY(-50%);
+  background:#ffcc00;
+  padding:25px;
+  border-radius:15px;
+  width:320px;
+  max-height:75vh;
+  overflow-y:auto;
+  box-shadow:0 0 30px rgba(0,0,0,0.5);
+}
+
+.shopItem{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  margin-bottom:18px;
+  background:#ffe066;
+  color:black;
+  padding:12px;
+  border-radius:10px;
+  height:80px;
+}
+
+/* PNG fills only its slot */
+.shopItem img{
+  height:70px;
+  width:auto;
+  object-fit:contain;
+  flex-shrink:0;
+}
+
+.shopItem div{
+  flex:1;
+  margin-left:10px;
+}
+
+.shopItem span{
+  font-size:14px;
+  display:block;
+  text-align:right;
+  margin-top:4px;
+}
+
+.shopItem button{
+  font-size:16px;
+  padding:8px 14px;
+  background:black;
+  color:#ffcc00;
+  border:none;
+  border-radius:6px;
+  cursor:pointer;
+  transition:0.2s;
+}
+
+.shopItem button:hover{
+  background:#222;
+}
+
+#resetBtn{
+  position:fixed;
+  bottom:10px;
+  left:10px;
+  font-size:12px;
+}
+
+/* Updated ownedText */
+.ownedText {
+  display: flex;          /* text and number on same line */
+  align-items: center;    /* vertically center in shopItem */
+  gap: 5px;               /* small space between text and number */
+  position: relative;
+  left: -100px;           /* shifted left */
+  font-size: 14px;
+}
+
+/* Leaderboard container */
+#leaderboard-container{
+  position:fixed;
+  left:8%;
+  top:50%;
+  transform:translateY(-50%);
+  background:#333;
+  padding:20px;
+  border-radius:12px;
+  width:280px;
+  max-height:75vh;
+  overflow-y:auto;
+  color:#ffcc00;
+  box-shadow:0 0 20px rgba(0,0,0,0.5);
+}
+
+#leaderboard-container h2{
+  margin-top:0;
+}
+
+#leaderboard-container input{
+  width:100%;
+  padding:6px;
+  margin-bottom:10px;
+  border-radius:6px;
+  border:none;
+}
+
+#leaderboard-container button{
+  width:100%;
+  padding:8px;
+  background:black;
+  color:#ffcc00;
+  border:none;
+  border-radius:6px;
+  cursor:pointer;
+}
+
+#leaderboard-container button:hover{
+  background:#222;
+}
+</style>
+</head>
+
+<body>
+
+<h1>RICHARD CLICKER</h1>
+
+<img id="face" src="friend.png" draggable="false">
+<div id="coinDisplay">Richard Coins: 0</div>
+
+<audio id="bgMusic" src="background.mp3" loop></audio>
+
+<div id="shop">
+
+  <div class="shopItem">
+    <img src="autoclicker.png">
+    <div>
+      <div>Auto Clicker</div>
+      <span class="ownedText">Owned: <span id="autoOwned">0</span></span>
+    </div>
+    <button onclick="buyAuto()"><span id="autoPrice">50</span></button>
+  </div>
+
+  <div class="shopItem">
+    <img src="farm.png">
+    <div>
+      <div>Richard Farm</div>
+      <span class="ownedText">Owned: <span id="farmOwned">0</span></span>
+    </div>
+    <button onclick="buyFarm()"><span id="farmPrice">300</span></button>
+  </div>
+
+  <div class="shopItem">
+    <img src="grandpa.png">
+    <div>
+      <div>Grandpa Richard</div>
+      <span class="ownedText">Owned: <span id="grandpaOwned">0</span></span>
+    </div>
+    <button onclick="buyGrandpa()"><span id="grandpaPrice">1000</span></button>
+  </div>
+
+  <div class="shopItem">
+    <img src="factory.png">
+    <div>
+      <div>Richard Factory</div>
+      <span class="ownedText">Owned: <span id="factoryOwned">0</span></span>
+    </div>
+    <button onclick="buyFactory()"><span id="factoryPrice">5000</span></button>
+  </div>
+
+</div>
+
+<button id="resetBtn" onclick="resetGame()">Reset Progress (Richard Approved)</button>
+
+<!-- Leaderboard -->
+<div id="leaderboard-container">
+  <h2>Top 10 Scores</h2>
+  <ul id="leaderboard"></ul>
+  <input type="text" id="playerName" placeholder="Enter your name">
+  <button onclick="submitScore()">Submit Score</button>
+</div>
+
+<script>
+let coins = 0;
+
+let autoClickers = 0;
+let autoPrice = 50;
+
+let farms = 0;
+let farmPrice = 300;
+
+let grandpas = 0;
+let grandpaPrice = 1000;
+
+let factories = 0;
+let factoryPrice = 5000;
+
+const face = document.getElementById("face");
+const coinDisplay = document.getElementById("coinDisplay");
+const music = document.getElementById("bgMusic");
+
+// ---- GAME FUNCTIONS ----
+function updateDisplay(){
+  coinDisplay.textContent = "Richard Coins: " + Math.floor(coins);
+
+  document.getElementById("autoPrice").textContent = Math.floor(autoPrice);
+  document.getElementById("autoOwned").textContent = autoClickers;
+
+  document.getElementById("farmPrice").textContent = Math.floor(farmPrice);
+  document.getElementById("farmOwned").textContent = farms;
+
+  document.getElementById("grandpaPrice").textContent = Math.floor(grandpaPrice);
+  document.getElementById("grandpaOwned").textContent = grandpas;
+
+  document.getElementById("factoryPrice").textContent = Math.floor(factoryPrice);
+  document.getElementById("factoryOwned").textContent = factories;
+}
+
+face.addEventListener("click", () => {
+  coins += 1;
+
+  face.classList.add("shake");
+  setTimeout(()=>face.classList.remove("shake"),300);
+
+  const hue = Math.floor(Math.random()*360);
+  document.body.style.background = `hsl(${hue}, 80%, 50%)`;
+  setTimeout(()=>document.body.style.background="black",100);
+
+  music.play().catch(()=>{});
+
+  updateDisplay();
+  saveGame();
+});
+
+function buyAuto(){
+  if(coins >= autoPrice){
+    coins -= autoPrice;
+    autoClickers++;
+    autoPrice = Math.ceil(autoPrice * 1.1);
+    updateDisplay();
+    saveGame();
+  }
+}
+
+function buyFarm(){
+  if(coins >= farmPrice){
+    coins -= farmPrice;
+    farms++;
+    farmPrice = Math.ceil(farmPrice * 1.2);
+    updateDisplay();
+    saveGame();
+  }
+}
+
+function buyGrandpa(){
+  if(coins >= grandpaPrice){
+    coins -= grandpaPrice;
+    grandpas++;
+    grandpaPrice = Math.ceil(grandpaPrice * 1.2);
+    updateDisplay();
+    saveGame();
+  }
+}
+
+function buyFactory(){
+  if(coins >= factoryPrice){
+    coins -= factoryPrice;
+    factories++;
+    factoryPrice = Math.ceil(factoryPrice * 1.2);
+    updateDisplay();
+    saveGame();
+  }
+}
+
+setInterval(() => {
+  coins += autoClickers * 1;
+  coins += farms * 10;
+  coins += grandpas * 50;
+  coins += factories * 100;
+  updateDisplay();
+}, 1000);
+
+function saveGame(){
+  localStorage.setItem("richardSave", JSON.stringify({
+    coins,
+    autoClickers,
+    autoPrice,
+    farms,
+    farmPrice,
+    grandpas,
+    grandpaPrice,
+    factories,
+    factoryPrice
+  }));
+}
+
+function loadGame(){
+  const save = JSON.parse(localStorage.getItem("richardSave"));
+  if(save){
+    coins = save.coins || 0;
+    autoClickers = save.autoClickers || 0;
+    autoPrice = save.autoPrice || 50;
+    farms = save.farms || 0;
+    farmPrice = save.farmPrice || 300;
+    grandpas = save.grandpas || 0;
+    grandpaPrice = save.grandpaPrice || 1000;
+    factories = save.factories || 0;
+    factoryPrice = save.factoryPrice || 5000;
+  }
+}
+
+function resetGame(){
+  localStorage.removeItem("richardSave");
+  location.reload();
+}
+
+loadGame();
+updateDisplay();
+
+// ---- LEADERBOARD FUNCTIONS ----
+async function loadLeaderboard(){
+  try {
+    const res = await fetch('/.netlify/functions/leaderboard');
+    const data = await res.json();
+    const list = document.getElementById('leaderboard');
+    list.innerHTML = '';
+    data.forEach((entry,i)=>{
+      const li = document.createElement('li');
+      li.textContent = `${i+1}. ${entry.name} - ${entry.score}`;
+      list.appendChild(li);
+    });
+  } catch(err){
+    console.log('Leaderboard load error', err);
+  }
+}
+
+async function submitScore(){
+  const name = document.getElementById('playerName').value.trim();
+  if(!name) return alert("Please enter your name first!");
+  
+  try {
+    await fetch('/.netlify/functions/leaderboard', {
+      method: 'POST',
+      body: JSON.stringify({name, score: Math.floor(coins)})
+    });
+    document.getElementById('playerName').value = '';
+    loadLeaderboard();
+  } catch(err){
+    console.log('Leaderboard submit error', err);
+  }
+}
+
+window.onload = loadLeaderboard;
+</script>
+
+</body>
+</html>
